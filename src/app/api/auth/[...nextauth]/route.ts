@@ -8,11 +8,13 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
 import { eq } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 import { usersTable } from "../../../drizzle/schema";
 import { db } from "@/app/drizzle/db";
 import { ENABLE_CREDENTIALS, ENABLE_GOOGLE_OAUTH } from "../../../../../constants/config";
 
 config({ path: ".env" });
+
 // Sestavení pole providerů na základě konstant
 const providers = [];
 
@@ -50,8 +52,9 @@ if (ENABLE_CREDENTIALS) {
                 }
                 const user = users[0];
 
-                // Kontrola hesla – v produkci použij hashování!
-                if (user.password !== credentials.password) {
+                // Porovnání zadaného hesla s hashovaným heslem uloženým v DB
+                const isValid = await bcrypt.compare(credentials.password, user.password);
+                if (!isValid) {
                     return null;
                 }
 
