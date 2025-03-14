@@ -15,7 +15,7 @@ import { ENABLE_CREDENTIALS, ENABLE_GOOGLE_OAUTH } from "../../../../../constant
 
 config({ path: ".env" });
 
-// Sestavení pole providerů na základě konstant
+// Build the providers array based on your configuration flags
 const providers = [];
 
 if (ENABLE_GOOGLE_OAUTH) {
@@ -40,7 +40,7 @@ if (ENABLE_CREDENTIALS) {
                     return null;
                 }
 
-                // Vyhledání uživatele v databázi podle emailu
+                // Najdi uživatele dle emailu v databázi
                 const users = await db
                     .select()
                     .from(usersTable)
@@ -48,22 +48,49 @@ if (ENABLE_CREDENTIALS) {
                     .limit(1);
 
                 if (users.length === 0) {
-                    return null;
+                    // Uživatel neexistuje, vytvoř ho
+                    const hashedPassword = await bcrypt.hash(credentials.password, 10);
+
+                    const insertedUsers = await db
+                        .insert(usersTable)
+                        .values({
+                            name: credentials.email.split("@")[0],
+                            email: credentials.email,
+                            password: hashedPassword,
+                            profilePicture: "",  // podle schématu
+                            courses_owned: [],    // podle schématu
+                            customerId: "",       // podle schématu
+                        })
+                        .returning();
+
+                    console.log("Inserted Users:", insertedUsers);
+
+                    if (insertedUsers.length === 0) {
+                        return null;
+                    }
+
+                    const newUser = insertedUsers[0];
+                    return {
+                        id: newUser.id,
+                        name: newUser.name,
+                        email: newUser.email,
+                        image: newUser.profilePicture || null,
+                    };
                 }
+
                 const user = users[0];
 
-                // Porovnání zadaného hesla s hashovaným heslem uloženým v DB
+                // Porovnej heslo s hashovanou verzí
                 const isValid = await bcrypt.compare(credentials.password, user.password);
                 if (!isValid) {
                     return null;
                 }
 
-                // Vrátíme objekt uživatele; image nastavíme jako null
                 return {
                     id: user.id,
                     name: user.name,
                     email: user.email,
-                    image: null,
+                    image: user.profilePicture || null,
                 };
             },
         })
@@ -74,9 +101,25 @@ export const authOptions: NextAuthOptions = {
     secret: process.env.NEXTAUTH_SECRET,
     providers: providers,
     callbacks: {
-        async jwt({ token, user }) {
+        async jwt({ token, user, account }) {
             if (user) {
-                token.id = user.id;
+                // Uživatel se přihlašoval přes Google
+                if (account?.provider === "google" && user.email) {
+                    // Načteme uživatele z databáze pomocí emailu
+                    const dbUser = await db
+                        .select()
+                        .from(usersTable)
+                        .where(eq(usersTable.email, user.email))
+                        .limit(1);
+
+                    if (dbUser.length > 0) {
+                        token.id = dbUser[0].id; // zde se uloží správný UUID
+                    } else {
+                        token.id = user.id;
+                    }
+                } else {
+                    token.id = user.id;
+                }
                 token.name = user.name;
                 token.email = user.email;
                 token.image = user.image;
@@ -91,6 +134,39 @@ export const authOptions: NextAuthOptions = {
                 image: token.image ? (token.image as string) : null,
             };
             return session;
+        },
+        async signIn({ user, account }) {
+            if (account?.provider === "google") {
+                // Ověření, že user.email je definován
+                if (!user.email) {
+                    console.error("Google OAuth: chybí email");
+                    return false;
+                }
+                // Zkontroluj, zda uživatel již existuje v databázi
+                const existingUsers = await db
+                    .select()
+                    .from(usersTable)
+                    .where(eq(usersTable.email, user.email))
+                    .limit(1);
+
+                if (existingUsers.length === 0) {
+                    // Uživatel ještě neexistuje – vytvoř ho
+                    const insertedUsers = await db
+                        .insert(usersTable)
+                        .values({
+                            name: user.name || (user.email ? user.email.split("@")[0] : "unknown"),
+                            email: user.email,
+                            password: "",  // Google auth nepoužívá heslo
+                            profilePicture: user.image || "",
+                            courses_owned: [],
+                            customerId: "",
+                        })
+                        .returning();
+
+                    console.log("Created new Google user:", insertedUsers);
+                }
+            }
+            return true;
         },
         async redirect({ baseUrl }) {
             return `${baseUrl}/dashboard`;

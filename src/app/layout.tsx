@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-
+import Navbar from "@/components/Navbar";
+import { Bounce, ToastContainer } from "react-toastify";
+import { Providers } from "../components/Providers";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -14,10 +16,24 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`antialiased`}
-      >
-        {children}
+      <body className="antialiased">
+        <Providers session={undefined}>
+          <Navbar />
+          {children}
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick={false}
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+            transition={Bounce}
+          />
+        </Providers>
       </body>
     </html>
   );
