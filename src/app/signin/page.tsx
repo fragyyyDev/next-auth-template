@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ENABLE_CREDENTIALS, ENABLE_GOOGLE_OAUTH, ENABLE_REGISTER } from "../../../constants/config";
-import {  toast } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { LogIn } from "lucide-react";
 import PasswordInput from "@/components/PasswordInput";
@@ -87,6 +87,11 @@ export default function SignIn() {
                         </p>
                     </Link>
                 )}
+                <Link href="/forgot-password">
+                    <p className="text-blue-400 mt-4 text-center">
+                        Zapomněl jsi heslo?
+                    </p>
+                </Link>
             </div>
         </div>
     );

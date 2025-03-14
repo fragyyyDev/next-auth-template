@@ -1,31 +1,34 @@
-// pages/api/auth/forgot-password.ts
-import { NextApiRequest, NextApiResponse } from 'next';
-import nodemailer from 'nodemailer';
-import crypto from 'crypto';
-import bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
+// src/app/api/auth/forgot-password/route.ts
+import { NextResponse } from "next/server";
+import nodemailer from "nodemailer";
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+import { eq } from "drizzle-orm";
 import { db } from "../../../drizzle/db";
 import { usersTable } from "../../../drizzle/schema";
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ message: 'Pouze POST requesty jsou povoleny.' });
-    }
+export async function POST(request: Request) {
+    const body = await request.json();
+    const { email } = body;
 
-    const { email } = req.body;
     if (!email) {
-        return res.status(400).json({ message: 'Email je povinný.' });
+        return NextResponse.json(
+            { message: "Email je povinný." },
+            { status: 400 }
+        );
     }
 
     // Najdeme uživatele dle emailu
     const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
-    // Pokud uživatel neexistuje, odpovíme stejným způsobem, aby nebylo možné zjistit, zda email existuje
+    // Pokud uživatel neexistuje, odpovíme stejně, aby nebylo možné zjistit, zda email existuje
     if (!user) {
-        return res.status(200).json({ message: 'Pokud je email registrovaný, obdržíte email s instrukcemi.' });
+        return NextResponse.json({
+            message: "Pokud je email registrovaný, obdržíte email s instrukcemi.",
+        });
     }
 
     // Vygenerujeme token a nastavíme expiraci (např. 1 hodina)
-    const token = crypto.randomBytes(32).toString('hex');
+    const token = crypto.randomBytes(32).toString("hex");
     const expiry = new Date(Date.now() + 3600 * 1000);
 
     // Hashujeme token pomocí bcrypt (salt rounds = 10)
@@ -50,15 +53,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const resetUrl = `${process.env.NEXTAUTH_URL}/api/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
     const mailOptions = {
         to: email,
-        subject: 'Reset hesla',
+        subject: "Reset hesla",
         html: `<p>Klikněte na <a href="${resetUrl}">tento odkaz</a> pro resetování hesla. Odkaz je platný 1 hodinu.</p>`,
     };
 
     try {
         await transporter.sendMail(mailOptions);
-        return res.status(200).json({ message: 'Email byl odeslán.' });
+        return NextResponse.json({ message: "Email byl odeslán." });
     } catch (error) {
-        console.error('Email send error:', error);
-        return res.status(500).json({ message: 'Nepodařilo se odeslat email.' });
+        console.error("Email send error:", error);
+        return NextResponse.json(
+            { message: "Nepodařilo se odeslat email." },
+            { status: 500 }
+        );
     }
 }
