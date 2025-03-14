@@ -5,9 +5,10 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ENABLE_CREDENTIALS, ENABLE_GOOGLE_OAUTH, ENABLE_REGISTER } from "../../../constants/config";
-import { ToastContainer, toast } from "react-toastify";
+import {  toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { LogIn } from "lucide-react";
+import PasswordInput from "@/components/PasswordInput";
 
 export default function SignIn() {
     const [email, setEmail] = useState("");
@@ -49,13 +50,7 @@ export default function SignIn() {
                         </div>
                         <div>
                             <label className="block text-blue-600 font-medium mb-1">Heslo:</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Tvé heslo"
-                                className="w-full border border-blue-200 p-2 rounded focus:outline-none focus:border-blue-400"
-                            />
+                            <PasswordInput value={password} onChange={setPassword} />
                         </div>
                         {error && <p className="text-red-500">{error}</p>}
                         <button

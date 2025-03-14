@@ -1,4 +1,4 @@
-import { boolean, pgTable, text, uuid, numeric } from "drizzle-orm/pg-core";
+import { boolean, pgTable, text, uuid, numeric, timestamp } from "drizzle-orm/pg-core";
 
 // Kurzy
 export const coursesTable = pgTable("courses", {
@@ -44,6 +44,9 @@ export const usersTable = pgTable("users", {
     password: text("password").notNull().default(""),
     courses_owned: text("courses_owned").array().notNull(),
     customerId: text("customerId").notNull(),
+    resetToken: text("resetToken"), // Může být NULL, pokud token není nastaven
+    resetTokenExpiry: timestamp("resetTokenExpiry", { mode: "date" }), // Může být NULL, pokud token není nastaven
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow(), // Automaticky nastaví aktuální čas
 });
 
 // Produkty (balíčky kurzů)

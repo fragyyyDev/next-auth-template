@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
         if (existingUsers.length > 0) {
             return NextResponse.json(
-                { error: "User already exists" },
+                { error: "Uživatel již existuje" },
                 { status: 400 }
             );
         }
