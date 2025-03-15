@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     });
 
     // URL pro reset hesla – předáme původní token, který uživatel obdrží emailem
-    const resetUrl = `${process.env.NEXTAUTH_URL}/api/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+    const resetUrl = `${process.env.NEXTAUTH_URL}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
     const mailOptions = {
         to: email,
         subject: "Reset hesla",
