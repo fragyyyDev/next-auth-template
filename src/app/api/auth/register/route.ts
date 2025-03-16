@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { usersTable } from "../../../drizzle/schema";
 import { db } from "@/app/drizzle/db";
+import { sendWelcomeEmail } from "@/functions/email";
 
 config({ path: ".env" });
 
@@ -13,6 +12,7 @@ export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { email, password, name } = body;
+
         if (!email || !password || !name) {
             return NextResponse.json(
                 { error: "Missing required fields" },
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
             );
         }
 
-        // Kontrola, zda uživatel již existuje
+        // Zkontrolujeme, zda uživatel již existuje
         const existingUsers = await db
             .select()
             .from(usersTable)
@@ -34,24 +34,30 @@ export async function POST(request: Request) {
             );
         }
 
-        // Hash hesla s použitím bcrypt (10 salt rounds)
+        // Zahashujeme heslo pomocí bcrypt (10 salt rounds)
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // V produkčním prostředí heslo neukládej v plaintextu – zde je uloženo hashované heslo
-        const newUser = await db
+        // Vložíme nového uživatele do databáze
+        const insertedUsers = await db
             .insert(usersTable)
             .values({
                 email,
                 name,
                 password: hashedPassword,
-                profilePicture: "", // Obrázek nastavíme jako prázdný string
+                profilePicture: "",
                 courses_owned: [],
                 customerId: "",
             })
             .returning();
 
+        // insertedUsers je pole, vezmeme tedy první (a jediný) záznam
+        const newUser = insertedUsers[0];
+
+        // Odeslání uvítacího e-mailu
+        await sendWelcomeEmail(newUser.email, newUser.name);
+
         return NextResponse.json(
-            { message: "User registered successfully", user: newUser[0] },
+            { message: "User registered successfully", user: newUser },
             { status: 200 }
         );
     } catch (error) {

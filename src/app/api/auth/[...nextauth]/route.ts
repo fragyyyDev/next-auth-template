@@ -4,14 +4,13 @@ export const revalidate = 0;
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
 import { config } from "dotenv";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { usersTable } from "../../../drizzle/schema";
 import { db } from "@/app/drizzle/db";
 import { ENABLE_CREDENTIALS, ENABLE_GOOGLE_OAUTH } from "../../../../../constants/config";
+import { sendWelcomeEmail } from "@/functions/email";
 
 config({ path: ".env" });
 
@@ -69,7 +68,11 @@ if (ENABLE_CREDENTIALS) {
                         return null;
                     }
 
+
                     const newUser = insertedUsers[0];
+
+
+
                     return {
                         id: newUser.id,
                         name: newUser.name,
@@ -164,6 +167,10 @@ export const authOptions: NextAuthOptions = {
                         .returning();
 
                     console.log("Created new Google user:", insertedUsers);
+                    const newUser = insertedUsers[0];
+                    if (insertedUsers.length > 0) {
+                        await sendWelcomeEmail(newUser.email, newUser.name);
+                    }
                 }
             }
             return true;
